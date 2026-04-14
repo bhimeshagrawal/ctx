@@ -2,8 +2,8 @@ name: release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -32,6 +34,15 @@ jobs:
 
       - name: Build all targets
         run: bun run build:all
+
+      - name: Update latest tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f latest "${GITHUB_SHA}"
+          git push origin refs/tags/latest --force
 
       - name: Prepare release assets
         shell: bash
@@ -69,6 +80,10 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: latest
+          name: latest
+          target_commitish: ${{ github.sha }}
           files: |
             release/*
-          generate_release_notes: true
+          overwrite_files: true
+          make_latest: true

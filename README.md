@@ -20,6 +20,7 @@ All runtime state lives under `~/.ctx/`.
 ## Commands
 
 - `ctx setup`
+- `ctx update`
 - `ctx uninstall`
 - `ctx doctor`
 - `ctx config show`
@@ -78,20 +79,15 @@ bun ./src/index.ts --help
 
 ## Release
 
-Releases are published from Git tags through GitHub Actions.
-
-Create and push a tag:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
+Releases are published automatically on every push to `main` through GitHub Actions.
 
 The release workflow will:
 - install Bun dependencies for all target platforms
 - run tests and typecheck
 - build all standalone binaries
 - publish release assets and `checksums.txt`
+
+The rolling release tag is `latest`.
 
 Expected release assets:
 - `ctx-darwin-arm64.tar.gz`
@@ -121,3 +117,22 @@ Non-interactive cleanup:
 ```bash
 ctx uninstall --force
 ```
+
+## Update
+
+Once installed as a compiled binary, update in place with:
+
+```bash
+ctx update
+```
+
+You can also target a specific release:
+
+```bash
+ctx update --version v0.1.0
+```
+
+Notes:
+- `ctx update` is intended for installed binaries, not `bun ./src/index.ts`
+- it currently supports macOS and Linux
+- it replaces the existing binary in place after checksum verification
