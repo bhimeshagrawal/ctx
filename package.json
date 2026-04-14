@@ -1,0 +1,29 @@
+{
+  "name": "ctx",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first memory ingest and retrieval CLI",
+  "bin": {
+    "ctx": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bunli dev",
+    "build": "bunli build --targets native",
+    "build:all": "bunli build --targets all",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bunli/core": "^0.8.2",
+    "@lancedb/lancedb": "^0.18.2",
+    "apache-arrow": "^18.1.0",
+    "fastembed": "^1.14.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "bunli": "^0.8.2",
+    "typescript": "^5.8.3"
+  }
+}
