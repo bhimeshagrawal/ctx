@@ -76,6 +76,30 @@ Run the CLI locally:
 bun ./src/index.ts --help
 ```
 
+## Release
+
+Releases are published from Git tags through GitHub Actions.
+
+Create and push a tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release workflow will:
+- install Bun dependencies for all target platforms
+- run tests and typecheck
+- build all standalone binaries
+- publish release assets and `checksums.txt`
+
+Expected release assets:
+- `ctx-darwin-arm64.tar.gz`
+- `ctx-darwin-x64.tar.gz`
+- `ctx-linux-arm64.tar.gz`
+- `ctx-linux-x64.tar.gz`
+- `ctx-windows-x64.zip`
+
 ## Smoke Test
 
 ```bash

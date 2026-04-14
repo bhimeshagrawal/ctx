@@ -1,0 +1,74 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.4"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --os '*' --cpu '*'
+
+      - name: Run tests
+        run: bun test
+
+      - name: Run typecheck
+        run: bun run typecheck
+
+      - name: Build all targets
+        run: bun run build:all
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+
+          for target_dir in dist/*; do
+            [ -d "$target_dir" ] || continue
+            target="$(basename "$target_dir")"
+
+            if [ -f "$target_dir/ctx.exe" ]; then
+              asset_name="ctx-${target}.zip"
+              (
+                cd "$target_dir"
+                zip -q "../../release/${asset_name}" ctx.exe
+              )
+            elif [ -f "$target_dir/ctx" ]; then
+              asset_name="ctx-${target}.tar.gz"
+              (
+                cd "$target_dir"
+                tar -czf "../../release/${asset_name}" ctx
+              )
+            else
+              echo "No expected binary found in ${target_dir}" >&2
+              exit 1
+            fi
+          done
+
+          (
+            cd release
+            sha256sum * > checksums.txt
+          )
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*
+          generate_release_notes: true
