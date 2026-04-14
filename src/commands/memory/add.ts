@@ -7,6 +7,7 @@ import { runIngest } from "../../ingest/ingest-service.js";
 import { readInput } from "../../ingest/read-input.js";
 import { createDatabase } from "../../storage/lancedb.js";
 import { renderData } from "../../output/render.js";
+import { parseTags } from "../../util/tags.js";
 
 export default defineCommand({
   name: "add",
@@ -16,7 +17,7 @@ export default defineCommand({
     text: option(z.string().optional(), { description: "Direct text to ingest" }),
     stdin: option(z.coerce.boolean().default(false), { description: "Read content from stdin" }),
     title: option(z.string().optional(), { description: "Optional document title" }),
-    tag: option(z.array(z.string()).default([]), { description: "Tags to attach to the document" }),
+    tag: option(z.string().optional(), { description: "Comma-separated tags to attach to the document" }),
     chunkSize: option(z.coerce.number().int().positive().optional(), {
       description: "Chunk size in characters"
     }),
@@ -45,7 +46,7 @@ export default defineCommand({
       config,
       input,
       title: flags.title ?? input.title,
-      tags: flags.tag,
+      tags: parseTags(flags.tag),
       chunkSize: flags.chunkSize,
       chunkOverlap: flags.chunkOverlap
     });

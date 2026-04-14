@@ -38,29 +38,33 @@ export async function runIngest(options: IngestOptions) {
   const document: DocumentRow = {
     id: documentId,
     sourceType: options.input.sourceType,
-    sourcePath: options.input.sourcePath,
+    sourcePath: options.input.sourcePath ?? "",
     sourceHash,
-    title: options.title,
+    title: options.title ?? "",
     tags: options.tags,
     createdAt: now,
     updatedAt: now,
     metadata: JSON.stringify({})
   };
 
-  const chunks: ChunkRow[] = chunked.map((item, index) => ({
-    id: randomUUID(),
-    documentId,
-    chunkIndex: item.index,
-    content: item.content,
-    contentHash: sha256(item.content),
-    tokenEstimate: item.tokenEstimate,
-    embedding: embeddings[index]!,
-    title: options.title,
-    sourcePath: options.input.sourcePath,
-    tags: options.tags,
-    createdAt: now,
-    metadata: JSON.stringify({})
-  }));
+  const chunks: ChunkRow[] = chunked.map((item, index) => {
+    const vector = Array.from(embeddings[index] as ArrayLike<number>);
+    return {
+      id: randomUUID(),
+      documentId,
+      chunkIndex: item.index,
+      content: item.content,
+      contentHash: sha256(item.content),
+      tokenEstimate: item.tokenEstimate,
+      vector: Float32Array.from(vector),
+      vectorJson: JSON.stringify(vector),
+      title: options.title ?? "",
+      sourcePath: options.input.sourcePath ?? "",
+      tags: options.tags,
+      createdAt: now,
+      metadata: JSON.stringify({})
+    };
+  });
 
   const documentsRepo = new DocumentsRepository(options.db.documents);
   const chunksRepo = new ChunksRepository(options.db.chunks);

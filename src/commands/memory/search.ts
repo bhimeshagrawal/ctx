@@ -6,6 +6,7 @@ import { FastEmbedProvider } from "../../embeddings/fastembed-provider.js";
 import { renderData } from "../../output/render.js";
 import { runSearch } from "../../retrieval/search-service.js";
 import { createDatabase } from "../../storage/lancedb.js";
+import { parseTags } from "../../util/tags.js";
 
 export default defineCommand({
   name: "search",
@@ -14,7 +15,7 @@ export default defineCommand({
     topK: option(z.coerce.number().int().positive().default(5), {
       description: "Number of results to return"
     }),
-    tag: option(z.array(z.string()).default([]), { description: "Filter by tags" }),
+    tag: option(z.string().optional(), { description: "Comma-separated tag filter" }),
     json: option(z.coerce.boolean().default(false), {
       description: "Print machine-readable output"
     })
@@ -38,7 +39,7 @@ export default defineCommand({
       provider,
       query,
       topK: flags.topK,
-      tags: flags.tag
+      tags: parseTags(flags.tag)
     });
     renderData(result, flags.json);
   }

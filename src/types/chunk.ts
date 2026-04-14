@@ -5,7 +5,8 @@ export type ChunkRow = {
   content: string;
   contentHash: string;
   tokenEstimate: number;
-  embedding: number[];
+  vector: number[] | Float32Array;
+  vectorJson: string;
   title: string | null;
   sourcePath: string | null;
   tags: string[];

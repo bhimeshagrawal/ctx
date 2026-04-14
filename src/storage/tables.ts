@@ -1,49 +1,48 @@
-import * as arrow from "apache-arrow";
+import type { ChunkRow } from "../types/chunk.js";
+import type { DocumentRow } from "../types/document.js";
+import type { ProfileRow } from "../types/profile.js";
 
-export function createDocumentsSchema(): arrow.Schema {
-  return new arrow.Schema([
-    new arrow.Field("id", new arrow.Utf8(), false),
-    new arrow.Field("sourceType", new arrow.Utf8(), false),
-    new arrow.Field("sourcePath", new arrow.Utf8(), true),
-    new arrow.Field("sourceHash", new arrow.Utf8(), false),
-    new arrow.Field("title", new arrow.Utf8(), true),
-    new arrow.Field("tags", new arrow.List(new arrow.Field("item", new arrow.Utf8(), true)), false),
-    new arrow.Field("createdAt", new arrow.Utf8(), false),
-    new arrow.Field("updatedAt", new arrow.Utf8(), false),
-    new arrow.Field("metadata", new arrow.Utf8(), false)
-  ]);
+export function seedDocumentRow(): DocumentRow {
+  return {
+    id: "__seed__",
+    sourceType: "text",
+    sourcePath: "",
+    sourceHash: "__seed__",
+    title: "",
+    tags: ["__seed__"],
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+    metadata: "{}"
+  };
 }
 
-export function createChunksSchema(dimension: number): arrow.Schema {
-  return new arrow.Schema([
-    new arrow.Field("id", new arrow.Utf8(), false),
-    new arrow.Field("documentId", new arrow.Utf8(), false),
-    new arrow.Field("chunkIndex", new arrow.Int32(), false),
-    new arrow.Field("content", new arrow.Utf8(), false),
-    new arrow.Field("contentHash", new arrow.Utf8(), false),
-    new arrow.Field("tokenEstimate", new arrow.Int32(), false),
-    new arrow.Field(
-      "embedding",
-      new arrow.FixedSizeList(dimension, new arrow.Field("item", new arrow.Float32(), true)),
-      false
-    ),
-    new arrow.Field("title", new arrow.Utf8(), true),
-    new arrow.Field("sourcePath", new arrow.Utf8(), true),
-    new arrow.Field("tags", new arrow.List(new arrow.Field("item", new arrow.Utf8(), true)), false),
-    new arrow.Field("createdAt", new arrow.Utf8(), false),
-    new arrow.Field("metadata", new arrow.Utf8(), false)
-  ]);
+export function seedChunkRow(dimension: number): ChunkRow {
+  return {
+    id: "__seed__",
+    documentId: "__seed__",
+    chunkIndex: 0,
+    content: "__seed__",
+    contentHash: "__seed__",
+    tokenEstimate: 1,
+    vector: Float32Array.from({ length: dimension }, () => 0),
+    vectorJson: JSON.stringify(Array.from({ length: dimension }, () => 0)),
+    title: "",
+    sourcePath: "",
+    tags: ["__seed__"],
+    createdAt: new Date(0).toISOString(),
+    metadata: "{}"
+  };
 }
 
-export function createProfilesSchema(): arrow.Schema {
-  return new arrow.Schema([
-    new arrow.Field("id", new arrow.Utf8(), false),
-    new arrow.Field("name", new arrow.Utf8(), false),
-    new arrow.Field("defaultTopK", new arrow.Int32(), false),
-    new arrow.Field("defaultChunkSize", new arrow.Int32(), false),
-    new arrow.Field("defaultChunkOverlap", new arrow.Int32(), false),
-    new arrow.Field("outputMode", new arrow.Utf8(), false),
-    new arrow.Field("embeddingModel", new arrow.Utf8(), false),
-    new arrow.Field("metadata", new arrow.Utf8(), false)
-  ]);
+export function seedProfileRow(): ProfileRow {
+  return {
+    id: "__seed__",
+    name: "__seed__",
+    defaultTopK: 5,
+    defaultChunkSize: 1200,
+    defaultChunkOverlap: 150,
+    outputMode: "text",
+    embeddingModel: "fast-bge-small-en-v1.5",
+    metadata: "{}"
+  };
 }

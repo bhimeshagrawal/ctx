@@ -28,6 +28,6 @@ export async function runSearch(options: SearchOptions) {
     ok: true,
     query: options.query,
     count: results.length,
-    results
+    results: results.map(({ vector, vectorJson, ...rest }) => rest)
   };
 }
