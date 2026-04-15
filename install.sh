@@ -97,12 +97,23 @@ fi
 tar -xzf "$ARCHIVE_PATH" -C "$TMP_DIR"
 
 if [ -f "${TMP_DIR}/${BIN_NAME}" ]; then
-  install -m 0755 "${TMP_DIR}/${BIN_NAME}" "${BIN_DIR}/${BIN_NAME}"
+  SRC_DIR="${TMP_DIR}"
 elif [ -f "${TMP_DIR}/dist/${BIN_NAME}" ]; then
-  install -m 0755 "${TMP_DIR}/dist/${BIN_NAME}" "${BIN_DIR}/${BIN_NAME}"
+  SRC_DIR="${TMP_DIR}/dist"
 else
   fail "could not find ${BIN_NAME} in extracted archive"
 fi
+
+install -m 0755 "${SRC_DIR}/${BIN_NAME}" "${BIN_DIR}/${BIN_NAME}"
+
+if [ -f "${SRC_DIR}/${BIN_NAME}.bin" ]; then
+  install -m 0755 "${SRC_DIR}/${BIN_NAME}.bin" "${BIN_DIR}/${BIN_NAME}.bin"
+fi
+
+for lib in "${SRC_DIR}"/lib*.dylib "${SRC_DIR}"/lib*.so "${SRC_DIR}"/lib*.so.*; do
+  [ -f "$lib" ] || continue
+  cp "$lib" "${BIN_DIR}/"
+done
 
 log "installed to ${BIN_DIR}/${BIN_NAME}"
 

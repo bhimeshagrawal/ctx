@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -23,6 +23,8 @@ export async function runUpdate(options: UpdateOptions) {
   const baseUrl = releaseBaseUrl(options.repository, options.version);
   const tmpRoot = await mkdtemp(path.join(tmpdir(), "ctx-update-"));
 
+  const installDir = path.dirname(execPath);
+
   try {
     const archivePath = path.join(tmpRoot, assets.archive);
     const checksumsPath = path.join(tmpRoot, assets.checksums);
@@ -35,12 +37,20 @@ export async function runUpdate(options: UpdateOptions) {
     await Bun.$`mkdir -p ${extractDir}`.quiet();
     await Bun.$`tar -xzf ${archivePath} -C ${extractDir}`.quiet();
 
-    const extractedBinary = path.join(extractDir, "ctx");
-    const binaryBuffer = await readFile(extractedBinary);
-    const stagingPath = `${execPath}.new`;
-    await writeFile(stagingPath, binaryBuffer);
-    await chmod(stagingPath, 0o755);
-    await rename(stagingPath, execPath);
+    const extractedFiles = await readdir(extractDir);
+    for (const file of extractedFiles) {
+      const src = path.join(extractDir, file);
+      const dest = path.join(installDir, file);
+      const staging = `${dest}.new`;
+
+      await writeFile(staging, await readFile(src));
+
+      if (file === "ctx" || file === "ctx.bin") {
+        await chmod(staging, 0o755);
+      }
+
+      await rename(staging, dest);
+    }
 
     return {
       ok: true,
