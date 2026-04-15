@@ -6,7 +6,7 @@ import setupCommand from "./commands/setup.js";
 import uninstallCommand from "./commands/uninstall.js";
 import updateCommand from "./commands/update.js";
 
-const cli = await createCLI();
+const cli = await createCLI({ name: "ctx", version: "0.1.0" });
 
 cli.command(setupCommand);
 cli.command(uninstallCommand);
