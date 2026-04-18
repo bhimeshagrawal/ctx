@@ -2,3 +2,5 @@ node_modules/
 dist/
 .bunli/
 .DS_Store
+target/
+target-rust/

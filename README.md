@@ -1,6 +1,6 @@
 # ctx
 
-`ctx` is a local-first CLI for memory ingest and retrieval.
+`ctx` is a local-first Rust CLI for memory ingest and retrieval.
 
 Current V1 scope:
 - local setup and uninstall
@@ -11,11 +11,19 @@ Current V1 scope:
 
 ## Stack
 
-- Bun + Bunli
+- Rust
+- clap
 - LanceDB
-- FastEmbed
+- fastembed-rs
 
-All runtime state lives under `~/.ctx/`.
+Runtime state now uses OS-standard locations instead of `~/.ctx/`.
+
+- macOS data: `~/Library/Application Support/ctx`
+- macOS cache: `~/Library/Caches/ctx`
+- Linux data: `${XDG_DATA_HOME:-~/.local/share}/ctx`
+- Linux cache: `${XDG_CACHE_HOME:-~/.cache}/ctx`
+- Windows data: `%AppData%/ctx`
+- Windows cache: `%LocalAppData%/ctx/cache`
 
 ## Commands
 
@@ -45,6 +53,8 @@ Optional environment variables:
 - `CTX_VERSION` to pin a release tag instead of `latest`
 - `CTX_RUN_SETUP=1` to run `ctx setup` after install
 - `CTX_REPO` to override the GitHub repository slug
+- `CTX_DATA_DIR` to override the durable app-data root
+- `CTX_CACHE_DIR` to override the cache root
 
 Example:
 
@@ -56,25 +66,19 @@ curl -fsSL https://raw.githubusercontent.com/bhimeshagrawal/ctx/main/install.sh 
 ## Local Development
 
 Requirements:
-- Bun
-
-Install dependencies:
-
-```bash
-bun install
-```
+- Rust toolchain
+- `protoc` for LanceDB dependencies
 
 Run checks:
 
 ```bash
-bun test
-bun run typecheck
+cargo test
 ```
 
 Run the CLI locally:
 
 ```bash
-bun ./src/index.ts --help
+cargo run -- --help
 ```
 
 ## Release
@@ -82,16 +86,15 @@ bun ./src/index.ts --help
 Releases are published automatically on every push to `main` through GitHub Actions.
 
 The release workflow will:
-- install Bun dependencies for all target platforms
-- run tests and typecheck
-- build all standalone binaries
+- install the Rust toolchain
+- run the Rust test suite
+- build standalone release binaries
 - publish release assets and `checksums.txt`
 
 The rolling release tag is `latest`.
 
-Expected release assets:
+Current release assets:
 - `ctx-darwin-arm64.tar.gz`
-- `ctx-darwin-x64.tar.gz`
 - `ctx-linux-arm64.tar.gz`
 - `ctx-linux-x64.tar.gz`
 - `ctx-windows-x64.zip`
@@ -106,16 +109,14 @@ ctx memory search "lancedb fastembed" --tag smoke
 
 ## Uninstall
 
-`ctx uninstall` removes app-managed local state under `~/.ctx/`.
+`ctx uninstall` preserves stored memory by default.
 
-It does not remove:
-- the installed binary
-- package-manager metadata
+It removes disposable cache state and leaves durable app data intact unless you ask to purge data explicitly.
 
-Non-interactive cleanup:
+Destructive purge:
 
 ```bash
-ctx uninstall --force
+ctx uninstall --purge-data --force
 ```
 
 ## Update
@@ -133,6 +134,6 @@ ctx update --version v0.1.0
 ```
 
 Notes:
-- `ctx update` is intended for installed binaries, not `bun ./src/index.ts`
+- `ctx update` is intended for installed binaries, not `cargo run`
 - it currently supports macOS and Linux
 - it replaces the existing binary in place after checksum verification

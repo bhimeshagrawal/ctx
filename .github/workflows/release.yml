@@ -10,57 +10,84 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            artifact: ctx-darwin-arm64.tar.gz
+            binary: ctx
+          - os: ubuntu-latest
+            artifact: ctx-linux-x64.tar.gz
+            binary: ctx
+          - os: windows-latest
+            artifact: ctx-windows-x64.zip
+            binary: ctx.exe
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          bun-version: "1.3.4"
+          targets: ${{ matrix.os == 'windows-latest' && 'x86_64-pc-windows-msvc' || matrix.os == 'macos-latest' && 'aarch64-apple-darwin' || 'x86_64-unknown-linux-gnu' }}
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile --os '*' --cpu '*'
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
 
       - name: Run tests
-        run: bun test
+        run: cargo test
 
-      - name: Run typecheck
-        run: bun run typecheck
+      - name: Build release binary
+        run: cargo build --release
 
-      - name: Build release binaries
+      - name: Package unix artifact
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist/darwin-arm64 dist/darwin-x64 dist/linux-arm64 dist/linux-x64 dist/windows-x64
+          mkdir -p release
+          cp target/release/ctx .
+          tar -czf "release/${{ matrix.artifact }}" ctx
 
-          bun build --compile --target=bun-darwin-arm64 --outfile dist/darwin-arm64/ctx.bin ./src/index.ts
-          bun build --compile --target=bun-darwin-x64 --outfile dist/darwin-x64/ctx.bin ./src/index.ts
-          bun build --compile --target=bun-linux-arm64 --outfile dist/linux-arm64/ctx.bin ./src/index.ts
-          bun build --compile --target=bun-linux-x64 --outfile dist/linux-x64/ctx.bin ./src/index.ts
-          bun build --compile --target=bun-windows-x64 --outfile dist/windows-x64/ctx.exe ./src/index.ts
+      - name: Package windows artifact
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Compress-Archive -Path target/release/ctx.exe -DestinationPath "release/${{ matrix.artifact }}"
 
-          # Copy native libraries
-          cp node_modules/onnxruntime-node/bin/napi-v3/darwin/arm64/libonnxruntime.1.21.0.dylib dist/darwin-arm64/
-          cp node_modules/onnxruntime-node/bin/napi-v3/darwin/x64/libonnxruntime.1.21.0.dylib  dist/darwin-x64/
-          find node_modules/onnxruntime-node/bin/napi-v3/linux/arm64/ -name "lib*" -exec cp {} dist/linux-arm64/ \;
-          find node_modules/onnxruntime-node/bin/napi-v3/linux/x64/  -name "lib*" -exec cp {} dist/linux-x64/ \;
+      - name: Upload release asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: release/${{ matrix.artifact }}
 
-          # Create wrapper scripts for unix targets
-          for platform in darwin-arm64 darwin-x64 linux-arm64 linux-x64; do
-            cat > "dist/${platform}/ctx" << 'WRAPPER'
-          #!/usr/bin/env bash
-          SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
-          export DYLD_LIBRARY_PATH="$SELF_DIR:${DYLD_LIBRARY_PATH:-}"
-          export LD_LIBRARY_PATH="$SELF_DIR:${LD_LIBRARY_PATH:-}"
-          exec "$SELF_DIR/ctx.bin" "$@"
-          WRAPPER
-            chmod +x "dist/${platform}/ctx"
-          done
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+
+      - name: Flatten assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          find release -type f -mindepth 2 -exec mv {} release/ \;
+          find release -mindepth 1 -type d -empty -delete
+
+      - name: Write checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum *.tar.gz *.zip > checksums.txt
 
       - name: Update latest tag
         shell: bash
@@ -70,39 +97,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -f latest "${GITHUB_SHA}"
           git push origin refs/tags/latest --force
-
-      - name: Prepare release assets
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p release
-
-          for target_dir in dist/*; do
-            [ -d "$target_dir" ] || continue
-            target="$(basename "$target_dir")"
-
-            if [ -f "$target_dir/ctx.exe" ]; then
-              asset_name="ctx-${target}.zip"
-              (
-                cd "$target_dir"
-                zip -q "../../release/${asset_name}" ctx.exe
-              )
-            elif [ -f "$target_dir/ctx" ]; then
-              asset_name="ctx-${target}.tar.gz"
-              (
-                cd "$target_dir"
-                tar -czf "../../release/${asset_name}" .
-              )
-            else
-              echo "No expected binary found in ${target_dir}" >&2
-              exit 1
-            fi
-          done
-
-          (
-            cd release
-            sha256sum * > checksums.txt
-          )
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
