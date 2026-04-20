@@ -1,9 +1,10 @@
 use anyhow::Result;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::paths::CtxPaths;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Defaults {
     pub top_k: usize,
     pub chunk_size: usize,
@@ -11,19 +12,19 @@ pub struct Defaults {
     pub output_mode: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct EmbeddingsConfig {
     pub provider: String,
     pub model: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RankingConfig {
     pub vector_weight: f32,
     pub keyword_weight: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CtxConfig {
     pub version: u32,
     pub defaults: Defaults,

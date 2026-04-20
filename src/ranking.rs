@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
+use schemars::JsonSchema;
 use serde::Serialize;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct SearchCandidate {
     pub id: String,
     pub document_id: String,

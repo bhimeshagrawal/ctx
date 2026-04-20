@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
+use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::{
@@ -10,7 +11,7 @@ use crate::{
     storage::{self, CtxDatabase},
 };
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct SearchResult {
     pub ok: bool,
     pub query: String,
@@ -20,7 +21,7 @@ pub struct SearchResult {
 
 pub async fn run_search(
     db: &CtxDatabase,
-    provider: &impl EmbeddingProvider,
+    provider: &(impl EmbeddingProvider + ?Sized),
     config: &CtxConfig,
     query: &str,
     top_k: usize,

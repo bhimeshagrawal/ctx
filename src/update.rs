@@ -1,6 +1,7 @@
+use schemars::JsonSchema;
 use serde::Serialize;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct UpdateDescription {
     pub repository: String,
     pub version: Option<String>,

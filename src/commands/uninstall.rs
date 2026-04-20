@@ -1,29 +1,27 @@
 use anyhow::Result;
 
-use crate::{cli::UninstallArgs, output, paths::CtxPaths};
+use crate::{
+    cli::UninstallArgs,
+    output,
+    paths::CtxPaths,
+    services::{system, types::UninstallRequest},
+};
 
 pub async fn run(args: UninstallArgs) -> Result<()> {
     let paths = CtxPaths::resolve(None, None)?;
-    let cache_removed = if paths.cache_root.exists() {
-        tokio::fs::remove_dir_all(&paths.cache_root).await.ok();
-        true
-    } else {
-        false
-    };
-
-    let data_removed = if args.purge_data && paths.data_root.exists() {
-        tokio::fs::remove_dir_all(&paths.data_root).await.ok();
-        true
-    } else {
-        false
-    };
-
+    let result = system::uninstall(
+        &paths,
+        UninstallRequest {
+            purge_data: args.purge_data,
+        },
+    )
+    .await?;
     output::render(
         &serde_json::json!({
-            "ok": true,
-            "cacheRemoved": cache_removed,
-            "dataRemoved": data_removed,
-            "dataPreserved": !args.purge_data,
+            "ok": result.ok,
+            "cacheRemoved": result.cache_removed,
+            "dataRemoved": result.data_removed,
+            "dataPreserved": result.data_preserved,
         }),
         args.json,
     )

@@ -46,7 +46,7 @@ pub struct ChunkRecord {
     pub vector: Vec<f32>,
 }
 
-pub async fn init_database(paths: &CtxPaths, provider: &impl EmbeddingProvider) -> Result<CtxDatabase> {
+pub async fn init_database(paths: &CtxPaths, provider: &(impl EmbeddingProvider + ?Sized)) -> Result<CtxDatabase> {
     paths.ensure().await?;
     let connection = connect(paths.db_dir.to_string_lossy().as_ref()).execute().await?;
     let dimension = provider.dimension().await? as i32;

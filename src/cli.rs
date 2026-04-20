@@ -19,6 +19,7 @@ impl Cli {
             Commands::Update(args) => commands::update::run(args).await,
             Commands::Config(args) => commands::config::run(args).await,
             Commands::Memory(args) => commands::memory::run(args).await,
+            Commands::Mcp(args) => commands::mcp::run(args).await,
         }
     }
 }
@@ -31,6 +32,7 @@ pub enum Commands {
     Update(UpdateArgs),
     Config(ConfigArgs),
     Memory(MemoryArgs),
+    Mcp(McpArgs),
 }
 
 #[derive(Debug, Args)]
@@ -125,4 +127,31 @@ pub struct MemorySearchArgs {
     pub tags: Vec<String>,
     #[arg(long, default_value_t = false)]
     pub json: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct McpArgs {
+    #[command(subcommand)]
+    pub command: McpCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum McpCommand {
+    Serve(McpServeArgs),
+}
+
+#[derive(Clone, Debug, clap::ValueEnum)]
+pub enum McpTransport {
+    Stdio,
+    Http,
+}
+
+#[derive(Debug, Args)]
+pub struct McpServeArgs {
+    #[arg(long, value_enum, default_value_t = McpTransport::Stdio)]
+    pub transport: McpTransport,
+    #[arg(long, default_value = "127.0.0.1")]
+    pub host: String,
+    #[arg(long, default_value_t = 8765)]
+    pub port: u16,
 }

@@ -1,9 +1,9 @@
 use anyhow::Result;
 
-use crate::{cli::ConfigShowArgs, config, output, paths::CtxPaths};
+use crate::{cli::ConfigShowArgs, output, paths::CtxPaths, services::system};
 
 pub async fn run(args: ConfigShowArgs) -> Result<()> {
     let paths = CtxPaths::resolve(None, None)?;
-    let config = config::load_or_default(&paths).await?;
+    let config = system::config_show(&paths).await?;
     output::render(&config, args.json)
 }
