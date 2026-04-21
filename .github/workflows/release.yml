@@ -23,7 +23,8 @@ jobs:
           targets: aarch64-apple-darwin
 
       - name: Install protoc
-        uses: arduino/setup-protoc@v3
+        shell: bash
+        run: brew install protobuf
 
       - name: Validate release tag
         shell: bash
