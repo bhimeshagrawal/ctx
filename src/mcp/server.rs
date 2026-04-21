@@ -189,7 +189,10 @@ impl CtxMcpServer {
             .map_err(|error| error.to_string())
     }
 
-    #[tool(name = "memory_search", description = "Search ctx memory")]
+    #[tool(
+        name = "memory_search",
+        description = "Search ctx memory. Returns compact memories by default; set `raw` for chunk-level inspection."
+    )]
     async fn memory_search(
         &self,
         Parameters(request): Parameters<MemorySearchRequest>,
@@ -294,7 +297,7 @@ impl CtxMcpServer {
             ),
             PromptMessage::new_text(
                 PromptMessageRole::Assistant,
-                "Use memory_search for retrieval, then inspect ctx://config or ctx://status if you need local runtime context.",
+                "Use memory_search for compact memory-first retrieval. Set `raw` only when you need chunk-level evidence inspection.",
             ),
         ])
         .with_description("Guidance for ctx search workflows")

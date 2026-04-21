@@ -43,6 +43,7 @@ pub async fn run(args: MemoryAddArgs) -> Result<()> {
             "ok": result.ok,
             "documentId": result.document_id,
             "chunkCount": result.chunk_count,
+            "memoryCount": result.memory_count,
             "title": result.title,
         }),
         args.json,

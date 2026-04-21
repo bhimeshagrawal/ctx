@@ -17,6 +17,7 @@ pub async fn run(args: MemorySearchArgs) -> Result<()> {
             query: args.query.join(" "),
             top_k: args.top_k,
             tags: args.tags,
+            raw: args.raw,
         },
     )
     .await?;

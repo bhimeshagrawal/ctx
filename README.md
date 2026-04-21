@@ -110,7 +110,7 @@ cargo run -- --help
 
 ## Release
 
-Stable releases are published from version tags such as `v0.1.1`.
+Stable releases are published from version tags such as `v0.2.0`.
 
 The release workflow will:
 - verify that the pushed tag matches `Cargo.toml`

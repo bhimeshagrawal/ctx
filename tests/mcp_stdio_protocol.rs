@@ -97,7 +97,7 @@ fn mcp_stdio_supports_core_mcp_flows() {
     );
     let config_show = read_response(&mut reader, 3);
     assert_eq!(config_show["result"]["isError"], false);
-    assert_eq!(config_show["result"]["structuredContent"]["version"], 1);
+    assert_eq!(config_show["result"]["structuredContent"]["version"], 2);
     assert_eq!(config_show["result"]["content"][0]["type"], "text");
 
     send_message(
@@ -143,7 +143,7 @@ fn mcp_stdio_supports_core_mcp_flows() {
     assert!(read_resource["result"]["contents"][0]["text"]
         .as_str()
         .expect("resource text")
-        .contains("\"version\": 1"));
+        .contains("\"version\": 2"));
 
     send_message(
         &mut stdin,

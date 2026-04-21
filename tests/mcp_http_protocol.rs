@@ -122,7 +122,7 @@ async fn mcp_http_supports_core_mcp_flows() -> Result<()> {
     assert_eq!(config_show_message["result"]["isError"], false);
     assert_eq!(
         config_show_message["result"]["structuredContent"]["version"],
-        1
+        2
     );
 
     let list_resources = post_session_request(
@@ -172,7 +172,7 @@ async fn mcp_http_supports_core_mcp_flows() -> Result<()> {
     assert!(read_resource_message["result"]["contents"][0]["text"]
         .as_str()
         .context("resources/read text content")?
-        .contains("\"version\": 1"));
+        .contains("\"version\": 2"));
 
     let list_prompts = post_session_request(
         &client,

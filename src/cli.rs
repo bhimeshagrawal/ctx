@@ -130,6 +130,8 @@ pub struct MemorySearchArgs {
     #[arg(long = "tag")]
     pub tags: Vec<String>,
     #[arg(long, default_value_t = false)]
+    pub raw: bool,
+    #[arg(long, default_value_t = false)]
     pub json: bool,
 }
 

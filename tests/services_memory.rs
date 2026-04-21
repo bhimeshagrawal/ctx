@@ -53,6 +53,7 @@ async fn memory_service_adds_and_searches_text() {
             query: "mcp design".to_string(),
             top_k: Some(5),
             tags: vec!["ctx".to_string()],
+            raw: false,
         },
     )
     .await
@@ -60,7 +61,16 @@ async fn memory_service_adds_and_searches_text() {
 
     assert!(add.ok);
     assert!(add.chunk_count >= 1);
+    assert!(add.memory_count >= 1);
     assert!(search.count >= 1);
+    assert_eq!(search.mode, "memory");
+    assert_eq!(search.results[0].kind, "memory");
+    assert!(
+        search.context_pack.relevant_facts.len()
+            + search.context_pack.relevant_procedures.len()
+            + search.context_pack.relevant_recent_events.len()
+            >= 1
+    );
 }
 
 struct FakeEmbeddingProvider;
