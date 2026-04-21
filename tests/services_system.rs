@@ -6,11 +6,7 @@ use ctx::{
     config::CtxConfig,
     embeddings::provider::EmbeddingProvider,
     paths::CtxPaths,
-    services::{
-        runtime::ServiceRuntime,
-        system,
-        types::UninstallRequest,
-    },
+    services::{runtime::ServiceRuntime, system, types::UninstallRequest},
     storage,
 };
 use tempfile::TempDir;
@@ -45,14 +41,9 @@ async fn uninstall_service_preserves_data_without_purge() {
     let paths = CtxPaths::from_roots(data.path(), cache.path());
     paths.ensure().await.expect("create managed directories");
 
-    let result = system::uninstall(
-        &paths,
-        UninstallRequest {
-            purge_data: false,
-        },
-    )
-    .await
-    .expect("uninstall managed paths");
+    let result = system::uninstall(&paths, UninstallRequest { purge_data: false })
+        .await
+        .expect("uninstall managed paths");
 
     assert!(result.cache_removed);
     assert!(!result.data_removed);

@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use reqwest::Client;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use tempfile::TempDir;
 
 const ACCEPT_BOTH: &str = "application/json, text/event-stream";
@@ -29,7 +29,11 @@ async fn mcp_http_supports_core_mcp_flows() -> Result<()> {
         .to_string();
     assert_eq!(initialize.status(), 200);
     assert!(
-        header_contains(initialize.headers(), reqwest::header::CONTENT_TYPE, "text/event-stream"),
+        header_contains(
+            initialize.headers(),
+            reqwest::header::CONTENT_TYPE,
+            "text/event-stream"
+        ),
         "initialize should respond with SSE"
     );
 
@@ -64,7 +68,11 @@ async fn mcp_http_supports_core_mcp_flows() -> Result<()> {
     .await?;
     assert_eq!(list_tools.status(), 200);
     assert!(
-        header_contains(list_tools.headers(), reqwest::header::CONTENT_TYPE, "text/event-stream"),
+        header_contains(
+            list_tools.headers(),
+            reqwest::header::CONTENT_TYPE,
+            "text/event-stream"
+        ),
         "tools/list should respond with SSE"
     );
 
@@ -77,10 +85,21 @@ async fn mcp_http_supports_core_mcp_flows() -> Result<()> {
         .filter_map(|tool| tool["name"].as_str())
         .collect::<Vec<_>>();
 
+    let memory_add = list_tools_message["result"]["tools"]
+        .as_array()
+        .context("tools/list missing tools array")?
+        .iter()
+        .find(|tool| tool["name"] == "memory_add")
+        .context("memory_add tool missing")?;
+
     assert_eq!(list_tools_message["id"], 2);
     assert!(names.contains(&"memory_add"));
     assert!(names.contains(&"memory_search"));
     assert!(names.contains(&"setup_run"));
+    assert!(memory_add["inputSchema"]["properties"]["text"].is_object());
+    assert!(memory_add["inputSchema"]["properties"]["path"].is_object());
+    assert!(memory_add["inputSchema"]["properties"]["source"].is_null());
+    assert!(memory_add["inputSchema"]["$defs"].is_null());
 
     let config_show = post_session_request(
         &client,
@@ -101,7 +120,10 @@ async fn mcp_http_supports_core_mcp_flows() -> Result<()> {
     let config_show_message = parse_sse_json(&config_show.text().await?)?;
     assert_eq!(config_show_message["id"], 3);
     assert_eq!(config_show_message["result"]["isError"], false);
-    assert_eq!(config_show_message["result"]["structuredContent"]["version"], 1);
+    assert_eq!(
+        config_show_message["result"]["structuredContent"]["version"],
+        1
+    );
 
     let list_resources = post_session_request(
         &client,
@@ -147,12 +169,10 @@ async fn mcp_http_supports_core_mcp_flows() -> Result<()> {
         read_resource_message["result"]["contents"][0]["uri"],
         "ctx://config"
     );
-    assert!(
-        read_resource_message["result"]["contents"][0]["text"]
-            .as_str()
-            .context("resources/read text content")?
-            .contains("\"version\": 1")
-    );
+    assert!(read_resource_message["result"]["contents"][0]["text"]
+        .as_str()
+        .context("resources/read text content")?
+        .contains("\"version\": 1"));
 
     let list_prompts = post_session_request(
         &client,
@@ -231,7 +251,10 @@ async fn mcp_http_rejects_non_initialize_post_without_session() -> Result<()> {
         .await?;
 
     assert_eq!(response.status(), 400);
-    assert_eq!(response.text().await?, "Bad Request: Session ID is required");
+    assert_eq!(
+        response.text().await?,
+        "Bad Request: Session ID is required"
+    );
 
     shutdown(&mut child);
     Ok(())
@@ -299,8 +322,15 @@ async fn wait_for_initialize(
             Ok(_) | Err(_) if Instant::now() < deadline => {
                 tokio::time::sleep(Duration::from_millis(100)).await;
             }
-            Ok(response) => return Err(anyhow::anyhow!("initialize failed with status {}", response.status())),
-            Err(error) => return Err(error).context("initialize request did not reach the HTTP MCP server"),
+            Ok(response) => {
+                return Err(anyhow::anyhow!(
+                    "initialize failed with status {}",
+                    response.status()
+                ))
+            }
+            Err(error) => {
+                return Err(error).context("initialize request did not reach the HTTP MCP server")
+            }
         }
     }
 }
@@ -335,7 +365,11 @@ fn parse_sse_json(body: &str) -> Result<Value> {
     Err(anyhow::anyhow!("parse SSE JSON payload")).context(format!("response body was: {body}"))
 }
 
-fn header_contains(headers: &reqwest::header::HeaderMap, name: reqwest::header::HeaderName, needle: &str) -> bool {
+fn header_contains(
+    headers: &reqwest::header::HeaderMap,
+    name: reqwest::header::HeaderName,
+    needle: &str,
+) -> bool {
     headers
         .get(name)
         .and_then(|value| value.to_str().ok())
@@ -344,10 +378,7 @@ fn header_contains(headers: &reqwest::header::HeaderMap, name: reqwest::header::
 
 fn unused_port() -> Result<u16> {
     let listener = TcpListener::bind("127.0.0.1:0").context("bind ephemeral port")?;
-    let port = listener
-        .local_addr()
-        .context("read ephemeral port")?
-        .port();
+    let port = listener.local_addr().context("read ephemeral port")?.port();
     drop(listener);
     Ok(port)
 }

@@ -5,12 +5,19 @@ use crate::{
     paths::CtxPaths,
     services::{
         runtime::ServiceRuntime,
-        types::{DoctorCheck, DoctorResponse, SetupResponse, UninstallRequest, UninstallResponse, UpdateRequest},
+        types::{
+            DoctorCheck, DoctorResponse, SetupResponse, UninstallRequest, UninstallResponse,
+            UpdateRequest,
+        },
     },
     storage, update,
 };
 
-pub async fn setup(paths: &CtxPaths, force: bool, verbose_embeddings: bool) -> Result<SetupResponse> {
+pub async fn setup(
+    paths: &CtxPaths,
+    force: bool,
+    verbose_embeddings: bool,
+) -> Result<SetupResponse> {
     let config = config::load_or_default(paths).await?;
 
     paths.ensure().await?;
@@ -34,7 +41,9 @@ pub async fn setup(paths: &CtxPaths, force: bool, verbose_embeddings: bool) -> R
 
 pub async fn doctor(runtime: &ServiceRuntime) -> Result<DoctorResponse> {
     let embedding = runtime.provider.health_check().await;
-    let storage_ready = storage::init_database(&runtime.paths, runtime.provider.as_ref()).await.is_ok();
+    let storage_ready = storage::init_database(&runtime.paths, runtime.provider.as_ref())
+        .await
+        .is_ok();
 
     Ok(DoctorResponse {
         ok: embedding.is_ok() && storage_ready,

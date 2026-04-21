@@ -4,7 +4,11 @@ use clap::{Args, Parser, Subcommand};
 use crate::commands;
 
 #[derive(Debug, Parser)]
-#[command(name = "ctx", version, about = "Local-first memory ingest and retrieval CLI")]
+#[command(
+    name = "ctx",
+    version,
+    about = "Local-first memory ingest and retrieval CLI"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,

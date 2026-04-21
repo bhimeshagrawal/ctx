@@ -20,7 +20,11 @@ pub async fn run(args: MemoryAddArgs) -> Result<()> {
                 text: input.content,
             }
         }
-        _ => return Err(anyhow!("exactly one input source is required: --file, --text, or --stdin")),
+        _ => {
+            return Err(anyhow!(
+                "exactly one input source is required: --file, --text, or --stdin"
+            ))
+        }
     };
     let result = memory::add(
         &runtime,

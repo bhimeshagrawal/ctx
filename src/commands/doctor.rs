@@ -1,7 +1,8 @@
 use anyhow::Result;
 
 use crate::{
-    cli::DoctorArgs, output,
+    cli::DoctorArgs,
+    output,
     services::{runtime::ServiceRuntime, system},
 };
 

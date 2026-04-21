@@ -68,9 +68,20 @@ fn mcp_stdio_supports_core_mcp_flows() {
         .filter_map(|tool| tool["name"].as_str())
         .collect::<Vec<_>>();
 
+    let memory_add = list_tools["result"]["tools"]
+        .as_array()
+        .expect("tools array")
+        .iter()
+        .find(|tool| tool["name"] == "memory_add")
+        .expect("memory_add tool");
+
     assert!(names.contains(&"memory_add"));
     assert!(names.contains(&"memory_search"));
     assert!(names.contains(&"setup_run"));
+    assert!(memory_add["inputSchema"]["properties"]["text"].is_object());
+    assert!(memory_add["inputSchema"]["properties"]["path"].is_object());
+    assert!(memory_add["inputSchema"]["properties"]["source"].is_null());
+    assert!(memory_add["inputSchema"]["$defs"].is_null());
 
     send_message(
         &mut stdin,
@@ -87,10 +98,7 @@ fn mcp_stdio_supports_core_mcp_flows() {
     let config_show = read_response(&mut reader, 3);
     assert_eq!(config_show["result"]["isError"], false);
     assert_eq!(config_show["result"]["structuredContent"]["version"], 1);
-    assert_eq!(
-        config_show["result"]["content"][0]["type"],
-        "text"
-    );
+    assert_eq!(config_show["result"]["content"][0]["type"], "text");
 
     send_message(
         &mut stdin,
@@ -132,12 +140,10 @@ fn mcp_stdio_supports_core_mcp_flows() {
         read_resource["result"]["contents"][0]["mimeType"],
         "application/json"
     );
-    assert!(
-        read_resource["result"]["contents"][0]["text"]
-            .as_str()
-            .expect("resource text")
-            .contains("\"version\": 1")
-    );
+    assert!(read_resource["result"]["contents"][0]["text"]
+        .as_str()
+        .expect("resource text")
+        .contains("\"version\": 1"));
 
     send_message(
         &mut stdin,

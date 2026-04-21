@@ -41,7 +41,9 @@ impl LocalEmbeddingProvider {
             )?;
             *guard = Some(model);
         }
-        let model = guard.as_mut().ok_or_else(|| anyhow!("embedding model was not initialized"))?;
+        let model = guard
+            .as_mut()
+            .ok_or_else(|| anyhow!("embedding model was not initialized"))?;
         f(model)
     }
 }
@@ -67,7 +69,10 @@ impl EmbeddingProvider for LocalEmbeddingProvider {
     async fn embed_query(&self, query: &str) -> Result<Vec<f32>> {
         let value = format!("query: {query}");
         let vectors = self.embed(&[value]).await?;
-        vectors.into_iter().next().ok_or_else(|| anyhow!("no query embedding returned"))
+        vectors
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow!("no query embedding returned"))
     }
 
     async fn health_check(&self) -> Result<String> {

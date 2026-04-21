@@ -2,18 +2,18 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use axum::{
-    body::{Body, to_bytes},
+    body::{to_bytes, Body},
     http::{Method, Request, StatusCode},
     response::{IntoResponse, Response},
     routing::any,
 };
 use rmcp::transport::streamable_http_server::{
+    session::{local::LocalSessionManager, SessionManager},
     StreamableHttpServerConfig, StreamableHttpService,
-    session::{SessionManager, local::LocalSessionManager},
 };
 use serde_json::Value;
 
-use crate::mcp::server::{CtxMcpServer, service_factory};
+use crate::mcp::server::{service_factory, CtxMcpServer};
 
 pub async fn serve(server: CtxMcpServer, host: String, port: u16) -> Result<()> {
     let service = StreamableHttpService::new(
@@ -50,7 +50,10 @@ where
         match to_bytes(body, usize::MAX).await {
             Ok(bytes) => {
                 if !is_initialize_request(&bytes) {
-                    return (StatusCode::BAD_REQUEST, "Bad Request: Session ID is required")
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        "Bad Request: Session ID is required",
+                    )
                         .into_response();
                 }
 
@@ -60,13 +63,19 @@ where
                     .map(Body::new);
             }
             Err(_) => {
-                return (StatusCode::BAD_REQUEST, "Bad Request: Failed to read request body")
+                return (
+                    StatusCode::BAD_REQUEST,
+                    "Bad Request: Failed to read request body",
+                )
                     .into_response();
             }
         }
     }
 
-    service.handle(Request::from_parts(parts, body)).await.map(Body::new)
+    service
+        .handle(Request::from_parts(parts, body))
+        .await
+        .map(Body::new)
 }
 
 fn is_initialize_request(bytes: &[u8]) -> bool {

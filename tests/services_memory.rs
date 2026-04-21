@@ -91,7 +91,10 @@ impl EmbeddingProvider for FakeEmbeddingProvider {
 fn embed_value(value: &str) -> Vec<f32> {
     let bytes = value.as_bytes();
     let length = bytes.len() as f32;
-    let alpha = bytes.iter().filter(|byte| byte.is_ascii_alphabetic()).count() as f32;
+    let alpha = bytes
+        .iter()
+        .filter(|byte| byte.is_ascii_alphabetic())
+        .count() as f32;
     let spaces = bytes.iter().filter(|byte| **byte == b' ').count() as f32;
     let mcp = value.to_lowercase().matches("mcp").count() as f32;
     vec![length, alpha, spaces, mcp]

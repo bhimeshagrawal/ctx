@@ -50,7 +50,11 @@ pub async fn run_search(
     })
 }
 
-fn keyword_scores(chunks: Vec<SearchCandidate>, query: &str, tags: &[String]) -> HashMap<String, f32> {
+fn keyword_scores(
+    chunks: Vec<SearchCandidate>,
+    query: &str,
+    tags: &[String],
+) -> HashMap<String, f32> {
     let terms = query
         .split_whitespace()
         .map(|value| value.to_lowercase())
@@ -62,7 +66,10 @@ fn keyword_scores(chunks: Vec<SearchCandidate>, query: &str, tags: &[String]) ->
             continue;
         }
         let haystack = chunk.content.to_lowercase();
-        let hits = terms.iter().filter(|term| haystack.contains(term.as_str())).count();
+        let hits = terms
+            .iter()
+            .filter(|term| haystack.contains(term.as_str()))
+            .count();
         if hits > 0 {
             scores.insert(chunk.id, hits as f32 / terms.len() as f32);
         }

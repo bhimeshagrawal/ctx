@@ -46,25 +46,34 @@ pub struct ChunkRecord {
     pub vector: Vec<f32>,
 }
 
-pub async fn init_database(paths: &CtxPaths, provider: &(impl EmbeddingProvider + ?Sized)) -> Result<CtxDatabase> {
+pub async fn init_database(
+    paths: &CtxPaths,
+    provider: &(impl EmbeddingProvider + ?Sized),
+) -> Result<CtxDatabase> {
     paths.ensure().await?;
-    let connection = connect(paths.db_dir.to_string_lossy().as_ref()).execute().await?;
+    let connection = connect(paths.db_dir.to_string_lossy().as_ref())
+        .execute()
+        .await?;
     let dimension = provider.dimension().await? as i32;
 
     let documents = match connection.open_table("documents").execute().await {
         Ok(table) => table,
-        Err(_) => connection
-            .create_table("documents", vec![empty_documents_batch()?])
-            .execute()
-            .await?,
+        Err(_) => {
+            connection
+                .create_table("documents", vec![empty_documents_batch()?])
+                .execute()
+                .await?
+        }
     };
 
     let chunks = match connection.open_table("chunks").execute().await {
         Ok(table) => table,
-        Err(_) => connection
-            .create_table("chunks", vec![empty_chunks_batch(dimension)?])
-            .execute()
-            .await?,
+        Err(_) => {
+            connection
+                .create_table("chunks", vec![empty_chunks_batch(dimension)?])
+                .execute()
+                .await?
+        }
     };
 
     Ok(CtxDatabase {
@@ -82,7 +91,11 @@ pub async fn insert_document(db: &CtxDatabase, document: &DocumentRecord) -> Res
     Ok(())
 }
 
-pub async fn insert_chunks(db: &CtxDatabase, chunks: &[ChunkRecord], vector_dimension: i32) -> Result<()> {
+pub async fn insert_chunks(
+    db: &CtxDatabase,
+    chunks: &[ChunkRecord],
+    vector_dimension: i32,
+) -> Result<()> {
     if chunks.is_empty() {
         return Ok(());
     }
@@ -93,7 +106,11 @@ pub async fn insert_chunks(db: &CtxDatabase, chunks: &[ChunkRecord], vector_dime
     Ok(())
 }
 
-pub async fn vector_search(db: &CtxDatabase, query: &[f32], limit: usize) -> Result<Vec<SearchCandidate>> {
+pub async fn vector_search(
+    db: &CtxDatabase,
+    query: &[f32],
+    limit: usize,
+) -> Result<Vec<SearchCandidate>> {
     let batches: Vec<RecordBatch> = db
         .chunks
         .query()
@@ -141,14 +158,54 @@ fn empty_chunks_batch(dimension: i32) -> Result<RecordBatch> {
 fn document_batch(documents: &[DocumentRecord]) -> Result<RecordBatch> {
     let schema = empty_documents_batch()?.schema();
     let columns: Vec<ArrayRef> = vec![
-        Arc::new(StringArray::from(documents.iter().map(|item| item.id.clone()).collect::<Vec<_>>())),
-        Arc::new(StringArray::from(documents.iter().map(|item| item.source_type.clone()).collect::<Vec<_>>())),
-        Arc::new(StringArray::from(documents.iter().map(|item| item.source_path.clone()).collect::<Vec<_>>())),
-        Arc::new(StringArray::from(documents.iter().map(|item| item.source_hash.clone()).collect::<Vec<_>>())),
-        Arc::new(StringArray::from(documents.iter().map(|item| item.title.clone()).collect::<Vec<_>>())),
-        Arc::new(StringArray::from(documents.iter().map(|item| item.tags.join(",")).collect::<Vec<_>>())),
-        Arc::new(StringArray::from(documents.iter().map(|item| item.created_at.clone()).collect::<Vec<_>>())),
-        Arc::new(StringArray::from(documents.iter().map(|item| item.updated_at.clone()).collect::<Vec<_>>())),
+        Arc::new(StringArray::from(
+            documents
+                .iter()
+                .map(|item| item.id.clone())
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(StringArray::from(
+            documents
+                .iter()
+                .map(|item| item.source_type.clone())
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(StringArray::from(
+            documents
+                .iter()
+                .map(|item| item.source_path.clone())
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(StringArray::from(
+            documents
+                .iter()
+                .map(|item| item.source_hash.clone())
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(StringArray::from(
+            documents
+                .iter()
+                .map(|item| item.title.clone())
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(StringArray::from(
+            documents
+                .iter()
+                .map(|item| item.tags.join(","))
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(StringArray::from(
+            documents
+                .iter()
+                .map(|item| item.created_at.clone())
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(StringArray::from(
+            documents
+                .iter()
+                .map(|item| item.updated_at.clone())
+                .collect::<Vec<_>>(),
+        )),
     ];
     Ok(RecordBatch::try_new(schema, columns)?)
 }
@@ -165,7 +222,10 @@ fn chunks_schema(dimension: i32) -> Arc<Schema> {
         Field::new("created_at", DataType::Utf8, false),
         Field::new(
             "vector",
-            DataType::FixedSizeList(Arc::new(Field::new("item", DataType::Float32, true)), dimension),
+            DataType::FixedSizeList(
+                Arc::new(Field::new("item", DataType::Float32, true)),
+                dimension,
+            ),
             true,
         ),
     ]))
@@ -186,13 +246,48 @@ fn chunks_batch(chunks: &[ChunkRecord], dimension: i32) -> Result<RecordBatch> {
         None,
     )?;
     let columns: Vec<ArrayRef> = vec![
-        Arc::new(StringArray::from(chunks.iter().map(|item| item.id.clone()).collect::<Vec<_>>())),
-        Arc::new(StringArray::from(chunks.iter().map(|item| item.document_id.clone()).collect::<Vec<_>>())),
-        Arc::new(UInt32Array::from(chunks.iter().map(|item| item.chunk_index).collect::<Vec<_>>())),
-        Arc::new(StringArray::from(chunks.iter().map(|item| item.content.clone()).collect::<Vec<_>>())),
-        Arc::new(StringArray::from(chunks.iter().map(|item| item.title.clone()).collect::<Vec<_>>())),
-        Arc::new(StringArray::from(chunks.iter().map(|item| item.source_path.clone()).collect::<Vec<_>>())),
-        Arc::new(StringArray::from(chunks.iter().map(|item| item.tags.join(",")).collect::<Vec<_>>())),
+        Arc::new(StringArray::from(
+            chunks
+                .iter()
+                .map(|item| item.id.clone())
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(StringArray::from(
+            chunks
+                .iter()
+                .map(|item| item.document_id.clone())
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(UInt32Array::from(
+            chunks
+                .iter()
+                .map(|item| item.chunk_index)
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(StringArray::from(
+            chunks
+                .iter()
+                .map(|item| item.content.clone())
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(StringArray::from(
+            chunks
+                .iter()
+                .map(|item| item.title.clone())
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(StringArray::from(
+            chunks
+                .iter()
+                .map(|item| item.source_path.clone())
+                .collect::<Vec<_>>(),
+        )),
+        Arc::new(StringArray::from(
+            chunks
+                .iter()
+                .map(|item| item.tags.join(","))
+                .collect::<Vec<_>>(),
+        )),
         Arc::new(StringArray::from(
             chunks
                 .iter()
@@ -234,10 +329,18 @@ fn record_batch_to_candidates(batch: RecordBatch) -> Vec<SearchCandidate> {
         .and_then(|column| column.as_any().downcast_ref::<Float32Array>());
 
     let Some(ids) = ids else { return Vec::new() };
-    let Some(doc_ids) = doc_ids else { return Vec::new() };
-    let Some(content) = content else { return Vec::new() };
-    let Some(title) = title else { return Vec::new() };
-    let Some(source_path) = source_path else { return Vec::new() };
+    let Some(doc_ids) = doc_ids else {
+        return Vec::new();
+    };
+    let Some(content) = content else {
+        return Vec::new();
+    };
+    let Some(title) = title else {
+        return Vec::new();
+    };
+    let Some(source_path) = source_path else {
+        return Vec::new();
+    };
     let Some(tags) = tags else { return Vec::new() };
 
     (0..batch.num_rows())
@@ -245,7 +348,8 @@ fn record_batch_to_candidates(batch: RecordBatch) -> Vec<SearchCandidate> {
             id: ids.value(index).to_string(),
             document_id: doc_ids.value(index).to_string(),
             title: Some(title.value(index).to_string()).filter(|value| !value.is_empty()),
-            source_path: Some(source_path.value(index).to_string()).filter(|value| !value.is_empty()),
+            source_path: Some(source_path.value(index).to_string())
+                .filter(|value| !value.is_empty()),
             tags: tags
                 .value(index)
                 .split(',')
@@ -253,7 +357,9 @@ fn record_batch_to_candidates(batch: RecordBatch) -> Vec<SearchCandidate> {
                 .map(ToString::to_string)
                 .collect(),
             content: content.value(index).to_string(),
-            vector_score: distance.map(|array| 1.0 - array.value(index)).unwrap_or(0.0),
+            vector_score: distance
+                .map(|array| 1.0 - array.value(index))
+                .unwrap_or(0.0),
             keyword_score: 0.0,
             final_score: 0.0,
         })

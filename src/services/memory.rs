@@ -96,7 +96,12 @@ pub async fn add(runtime: &ServiceRuntime, request: MemoryAddRequest) -> Result<
             vector,
         })
         .collect::<Vec<_>>();
-    storage::insert_chunks(&runtime.db, &records, runtime.provider.dimension().await? as i32).await?;
+    storage::insert_chunks(
+        &runtime.db,
+        &records,
+        runtime.provider.dimension().await? as i32,
+    )
+    .await?;
 
     Ok(MemoryAddResponse {
         ok: true,
@@ -106,7 +111,10 @@ pub async fn add(runtime: &ServiceRuntime, request: MemoryAddRequest) -> Result<
     })
 }
 
-pub async fn search(runtime: &ServiceRuntime, request: MemorySearchRequest) -> Result<SearchResult> {
+pub async fn search(
+    runtime: &ServiceRuntime,
+    request: MemorySearchRequest,
+) -> Result<SearchResult> {
     let query = request.query.trim();
     if query.is_empty() {
         return Err(anyhow!("search query is required"));

@@ -27,8 +27,8 @@ pub fn rank_results(
 
     for mut candidate in vector_matches {
         candidate.keyword_score = *keyword_matches.get(&candidate.id).unwrap_or(&0.0);
-        candidate.final_score = (candidate.vector_score * vector_weight)
-            + (candidate.keyword_score * keyword_weight);
+        candidate.final_score =
+            (candidate.vector_score * vector_weight) + (candidate.keyword_score * keyword_weight);
         merged.insert(candidate.id.clone(), candidate);
     }
 

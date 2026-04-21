@@ -1,4 +1,6 @@
-use rmcp::model::{Annotated, ListResourcesResult, RawResource, ReadResourceResult, ResourceContents};
+use rmcp::model::{
+    Annotated, ListResourcesResult, RawResource, ReadResourceResult, ResourceContents,
+};
 
 use crate::{paths::CtxPaths, services::runtime::ServiceRuntime};
 
@@ -33,7 +35,9 @@ pub fn read_resource(runtime: &ServiceRuntime, uri: &str) -> Option<ReadResource
     let content = match uri {
         CONFIG_URI => serde_json::to_string_pretty(&runtime.config)
             .ok()
-            .map(|json| ResourceContents::text(json, CONFIG_URI).with_mime_type("application/json")),
+            .map(|json| {
+                ResourceContents::text(json, CONFIG_URI).with_mime_type("application/json")
+            }),
         PATHS_URI => serde_json::to_string_pretty(&runtime.paths)
             .ok()
             .map(|json| ResourceContents::text(json, PATHS_URI).with_mime_type("application/json")),
@@ -45,11 +49,8 @@ pub fn read_resource(runtime: &ServiceRuntime, uri: &str) -> Option<ReadResource
                 "configPath": runtime.paths.config_path,
             });
             Some(
-                ResourceContents::text(
-                    serde_json::to_string_pretty(&value).ok()?,
-                    STATUS_URI,
-                )
-                .with_mime_type("application/json"),
+                ResourceContents::text(serde_json::to_string_pretty(&value).ok()?, STATUS_URI)
+                    .with_mime_type("application/json"),
             )
         }
         _ => None,

@@ -18,20 +18,28 @@ pub struct InputPayload {
     pub content: String,
 }
 
-pub async fn read_input(file: Option<String>, text: Option<String>, stdin: bool) -> Result<InputPayload> {
+pub async fn read_input(
+    file: Option<String>,
+    text: Option<String>,
+    stdin: bool,
+) -> Result<InputPayload> {
     let enabled = [file.is_some(), text.is_some(), stdin]
         .into_iter()
         .filter(|flag| *flag)
         .count();
 
     if enabled != 1 {
-        return Err(anyhow!("exactly one input source is required: --file, --text, or --stdin"));
+        return Err(anyhow!(
+            "exactly one input source is required: --file, --text, or --stdin"
+        ));
     }
 
     if let Some(file) = file {
         let path = PathBuf::from(&file);
         return Ok(InputPayload {
-            title: path.file_name().map(|value| value.to_string_lossy().into_owned()),
+            title: path
+                .file_name()
+                .map(|value| value.to_string_lossy().into_owned()),
             source_type: SourceType::File,
             source_path: Some(std::fs::canonicalize(path)?),
             content: tokio::fs::read_to_string(file).await?,

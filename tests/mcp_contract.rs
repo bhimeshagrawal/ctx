@@ -1,7 +1,4 @@
-use ctx::mcp::{
-    resources,
-    server::CtxMcpServer,
-};
+use ctx::mcp::{resources, server::CtxMcpServer};
 use tempfile::TempDir;
 
 #[tokio::test]
