@@ -4,11 +4,16 @@ use std::{
 };
 
 use serde_json::Value;
+use tempfile::TempDir;
 
 #[test]
 fn mcp_stdio_supports_core_mcp_flows() {
+    let data_dir = TempDir::new().expect("create temp data dir");
+    let cache_dir = TempDir::new().expect("create temp cache dir");
     let mut child = Command::new(env!("CARGO_BIN_EXE_ctx"))
         .args(["mcp", "serve", "--transport", "stdio"])
+        .env("CTX_DATA_DIR", data_dir.path())
+        .env("CTX_CACHE_DIR", cache_dir.path())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())

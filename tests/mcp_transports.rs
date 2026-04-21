@@ -1,9 +1,20 @@
-use std::{process::{Command, Stdio}, thread, time::Duration};
+use std::{
+    net::TcpListener,
+    process::{Command, Stdio},
+    thread,
+    time::Duration,
+};
+
+use tempfile::TempDir;
 
 #[test]
 fn mcp_stdio_process_starts_and_stays_running() {
+    let data_dir = TempDir::new().expect("create temp data dir");
+    let cache_dir = TempDir::new().expect("create temp cache dir");
     let mut child = Command::new(env!("CARGO_BIN_EXE_ctx"))
         .args(["mcp", "serve", "--transport", "stdio"])
+        .env("CTX_DATA_DIR", data_dir.path())
+        .env("CTX_CACHE_DIR", cache_dir.path())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -19,6 +30,9 @@ fn mcp_stdio_process_starts_and_stays_running() {
 
 #[test]
 fn mcp_http_process_starts_and_stays_running() {
+    let data_dir = TempDir::new().expect("create temp data dir");
+    let cache_dir = TempDir::new().expect("create temp cache dir");
+    let port = unused_port();
     let mut child = Command::new(env!("CARGO_BIN_EXE_ctx"))
         .args([
             "mcp",
@@ -28,8 +42,10 @@ fn mcp_http_process_starts_and_stays_running() {
             "--host",
             "127.0.0.1",
             "--port",
-            "8765",
+            &port.to_string(),
         ])
+        .env("CTX_DATA_DIR", data_dir.path())
+        .env("CTX_CACHE_DIR", cache_dir.path())
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
@@ -41,4 +57,11 @@ fn mcp_http_process_starts_and_stays_running() {
 
     child.kill().ok();
     let _ = child.wait();
+}
+
+fn unused_port() -> u16 {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind ephemeral port");
+    let port = listener.local_addr().expect("read local addr").port();
+    drop(listener);
+    port
 }

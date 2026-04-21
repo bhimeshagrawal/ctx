@@ -8,6 +8,7 @@ use std::{
 use anyhow::{Context, Result};
 use reqwest::Client;
 use serde_json::{Value, json};
+use tempfile::TempDir;
 
 const ACCEPT_BOTH: &str = "application/json, text/event-stream";
 
@@ -15,7 +16,7 @@ const ACCEPT_BOTH: &str = "application/json, text/event-stream";
 async fn mcp_http_supports_core_mcp_flows() -> Result<()> {
     let port = unused_port()?;
     let base_url = format!("http://127.0.0.1:{port}/mcp");
-    let mut child = spawn_http_server(port)?;
+    let (_data_dir, _cache_dir, mut child) = spawn_http_server(port)?;
     let client = Client::new();
 
     let initialize = wait_for_initialize(&client, &base_url, &mut child).await?;
@@ -212,7 +213,7 @@ async fn mcp_http_supports_core_mcp_flows() -> Result<()> {
 async fn mcp_http_rejects_non_initialize_post_without_session() -> Result<()> {
     let port = unused_port()?;
     let base_url = format!("http://127.0.0.1:{port}/mcp");
-    let mut child = spawn_http_server(port)?;
+    let (_data_dir, _cache_dir, mut child) = spawn_http_server(port)?;
     let client = Client::new();
 
     let _initialize = wait_for_initialize(&client, &base_url, &mut child).await?;
@@ -236,8 +237,10 @@ async fn mcp_http_rejects_non_initialize_post_without_session() -> Result<()> {
     Ok(())
 }
 
-fn spawn_http_server(port: u16) -> Result<Child> {
-    Command::new(env!("CARGO_BIN_EXE_ctx"))
+fn spawn_http_server(port: u16) -> Result<(TempDir, TempDir, Child)> {
+    let data_dir = TempDir::new().context("create temp data dir")?;
+    let cache_dir = TempDir::new().context("create temp cache dir")?;
+    let child = Command::new(env!("CARGO_BIN_EXE_ctx"))
         .args([
             "mcp",
             "serve",
@@ -248,11 +251,15 @@ fn spawn_http_server(port: u16) -> Result<Child> {
             "--port",
             &port.to_string(),
         ])
+        .env("CTX_DATA_DIR", data_dir.path())
+        .env("CTX_CACHE_DIR", cache_dir.path())
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
         .spawn()
-        .context("spawn http mcp server")
+        .context("spawn http mcp server")?;
+
+    Ok((data_dir, cache_dir, child))
 }
 
 async fn wait_for_initialize(
