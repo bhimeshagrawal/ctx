@@ -208,6 +208,34 @@ async fn mcp_http_supports_core_mcp_flows() -> Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn mcp_http_rejects_non_initialize_post_without_session() -> Result<()> {
+    let port = unused_port()?;
+    let base_url = format!("http://127.0.0.1:{port}/mcp");
+    let mut child = spawn_http_server(port)?;
+    let client = Client::new();
+
+    let _initialize = wait_for_initialize(&client, &base_url, &mut child).await?;
+
+    let response = client
+        .post(&base_url)
+        .header(reqwest::header::ACCEPT, ACCEPT_BOTH)
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .json(&json!({
+            "jsonrpc": "2.0",
+            "id": 99,
+            "method": "tools/list"
+        }))
+        .send()
+        .await?;
+
+    assert_eq!(response.status(), 400);
+    assert_eq!(response.text().await?, "Bad Request: Session ID is required");
+
+    shutdown(&mut child);
+    Ok(())
+}
+
 fn spawn_http_server(port: u16) -> Result<Child> {
     Command::new(env!("CARGO_BIN_EXE_ctx"))
         .args([
