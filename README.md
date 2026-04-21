@@ -34,6 +34,47 @@ Runtime state now uses OS-standard locations instead of `~/.ctx/`.
 - `ctx config show`
 - `ctx memory add`
 - `ctx memory search`
+- `ctx mcp serve`
+
+## MCP
+
+`ctx` can also run as a local MCP server over `stdio` or HTTP.
+
+Start a stdio server for agent clients that launch the process directly:
+
+```bash
+ctx mcp serve --transport stdio
+```
+
+Start an HTTP server bound to localhost:
+
+```bash
+ctx mcp serve --transport http --host 127.0.0.1 --port 8765
+```
+
+Notes:
+- HTTP is local-only in V1 and binds to `127.0.0.1` by default
+- there is no auth layer yet, so remote exposure is not supported
+- the MCP contract is transport-neutral and exposes the same tools, resources, and prompts over both transports
+
+Current MCP tools:
+- `memory_add`
+- `memory_search`
+- `setup_run`
+- `doctor_run`
+- `config_show`
+- `update_run`
+- `uninstall_run`
+
+Current MCP resources:
+- `ctx://config`
+- `ctx://paths`
+- `ctx://status`
+
+Current MCP prompts:
+- `memory-add-workflow`
+- `memory-search-workflow`
+- `setup-workflow`
 
 ## Install
 
