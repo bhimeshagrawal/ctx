@@ -1,4 +1,5 @@
 use std::{
+    io::Read,
     net::TcpListener,
     process::{Child, Command, Stdio},
     time::{Duration, Instant},
@@ -11,13 +12,13 @@ use serde_json::{Value, json};
 const ACCEPT_BOTH: &str = "application/json, text/event-stream";
 
 #[tokio::test]
-async fn mcp_http_supports_initialize_and_list_tools() -> Result<()> {
+async fn mcp_http_supports_core_mcp_flows() -> Result<()> {
     let port = unused_port()?;
     let base_url = format!("http://127.0.0.1:{port}/mcp");
     let mut child = spawn_http_server(port)?;
     let client = Client::new();
 
-    let initialize = wait_for_initialize(&client, &base_url).await?;
+    let initialize = wait_for_initialize(&client, &base_url, &mut child).await?;
     let session_id = initialize
         .headers()
         .get("Mcp-Session-Id")
@@ -49,18 +50,17 @@ async fn mcp_http_supports_initialize_and_list_tools() -> Result<()> {
         .await?;
     assert_eq!(initialized.status(), 202);
 
-    let list_tools = client
-        .post(&base_url)
-        .header(reqwest::header::ACCEPT, ACCEPT_BOTH)
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
-        .header("Mcp-Session-Id", &session_id)
-        .json(&json!({
+    let list_tools = post_session_request(
+        &client,
+        &base_url,
+        &session_id,
+        &json!({
             "jsonrpc": "2.0",
             "id": 2,
             "method": "tools/list"
-        }))
-        .send()
-        .await?;
+        }),
+    )
+    .await?;
     assert_eq!(list_tools.status(), 200);
     assert!(
         header_contains(list_tools.headers(), reqwest::header::CONTENT_TYPE, "text/event-stream"),
@@ -80,6 +80,129 @@ async fn mcp_http_supports_initialize_and_list_tools() -> Result<()> {
     assert!(names.contains(&"memory_add"));
     assert!(names.contains(&"memory_search"));
     assert!(names.contains(&"setup_run"));
+
+    let config_show = post_session_request(
+        &client,
+        &base_url,
+        &session_id,
+        &json!({
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "tools/call",
+            "params": {
+                "name": "config_show",
+                "arguments": {}
+            }
+        }),
+    )
+    .await?;
+    assert_eq!(config_show.status(), 200);
+    let config_show_message = parse_sse_json(&config_show.text().await?)?;
+    assert_eq!(config_show_message["id"], 3);
+    assert_eq!(config_show_message["result"]["isError"], false);
+    assert_eq!(config_show_message["result"]["structuredContent"]["version"], 1);
+
+    let list_resources = post_session_request(
+        &client,
+        &base_url,
+        &session_id,
+        &json!({
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "resources/list"
+        }),
+    )
+    .await?;
+    let list_resources_message = parse_sse_json(&list_resources.text().await?)?;
+    let resource_uris = list_resources_message["result"]["resources"]
+        .as_array()
+        .context("resources/list missing resources array")?
+        .iter()
+        .filter_map(|resource| resource["uri"].as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(list_resources_message["id"], 4);
+    assert!(resource_uris.contains(&"ctx://config"));
+    assert!(resource_uris.contains(&"ctx://paths"));
+    assert!(resource_uris.contains(&"ctx://status"));
+
+    let read_resource = post_session_request(
+        &client,
+        &base_url,
+        &session_id,
+        &json!({
+            "jsonrpc": "2.0",
+            "id": 5,
+            "method": "resources/read",
+            "params": {
+                "uri": "ctx://config"
+            }
+        }),
+    )
+    .await?;
+    let read_resource_message = parse_sse_json(&read_resource.text().await?)?;
+    assert_eq!(read_resource_message["id"], 5);
+    assert_eq!(
+        read_resource_message["result"]["contents"][0]["uri"],
+        "ctx://config"
+    );
+    assert!(
+        read_resource_message["result"]["contents"][0]["text"]
+            .as_str()
+            .context("resources/read text content")?
+            .contains("\"version\": 1")
+    );
+
+    let list_prompts = post_session_request(
+        &client,
+        &base_url,
+        &session_id,
+        &json!({
+            "jsonrpc": "2.0",
+            "id": 6,
+            "method": "prompts/list"
+        }),
+    )
+    .await?;
+    let list_prompts_message = parse_sse_json(&list_prompts.text().await?)?;
+    let prompt_names = list_prompts_message["result"]["prompts"]
+        .as_array()
+        .context("prompts/list missing prompts array")?
+        .iter()
+        .filter_map(|prompt| prompt["name"].as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(list_prompts_message["id"], 6);
+    assert!(prompt_names.contains(&"memory-add-workflow"));
+    assert!(prompt_names.contains(&"memory-search-workflow"));
+    assert!(prompt_names.contains(&"setup-workflow"));
+
+    let get_prompt = post_session_request(
+        &client,
+        &base_url,
+        &session_id,
+        &json!({
+            "jsonrpc": "2.0",
+            "id": 7,
+            "method": "prompts/get",
+            "params": {
+                "name": "setup-workflow",
+                "arguments": {}
+            }
+        }),
+    )
+    .await?;
+    let get_prompt_message = parse_sse_json(&get_prompt.text().await?)?;
+    assert_eq!(get_prompt_message["id"], 7);
+    assert_eq!(
+        get_prompt_message["result"]["description"],
+        "Guidance for initial ctx setup"
+    );
+    assert_eq!(get_prompt_message["result"]["messages"][0]["role"], "user");
+    assert_eq!(
+        get_prompt_message["result"]["messages"][1]["role"],
+        "assistant"
+    );
 
     shutdown(&mut child);
     Ok(())
@@ -104,9 +227,19 @@ fn spawn_http_server(port: u16) -> Result<Child> {
         .context("spawn http mcp server")
 }
 
-async fn wait_for_initialize(client: &Client, base_url: &str) -> Result<reqwest::Response> {
-    let deadline = Instant::now() + Duration::from_secs(5);
+async fn wait_for_initialize(
+    client: &Client,
+    base_url: &str,
+    child: &mut Child,
+) -> Result<reqwest::Response> {
+    let deadline = Instant::now() + Duration::from_secs(10);
     loop {
+        if let Some(status) = child.try_wait().context("check HTTP MCP server status")? {
+            return Err(anyhow::anyhow!(
+                "HTTP MCP server exited before initialize: status={status}, stderr={}",
+                read_stderr(child)
+            ));
+        }
         match client
             .post(base_url)
             .header(reqwest::header::ACCEPT, ACCEPT_BOTH)
@@ -137,6 +270,23 @@ async fn wait_for_initialize(client: &Client, base_url: &str) -> Result<reqwest:
     }
 }
 
+async fn post_session_request(
+    client: &Client,
+    base_url: &str,
+    session_id: &str,
+    message: &Value,
+) -> Result<reqwest::Response> {
+    client
+        .post(base_url)
+        .header(reqwest::header::ACCEPT, ACCEPT_BOTH)
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .header("Mcp-Session-Id", session_id)
+        .json(message)
+        .send()
+        .await
+        .context("send session request")
+}
+
 fn parse_sse_json(body: &str) -> Result<Value> {
     for payload in body.lines().filter_map(|line| line.strip_prefix("data: ")) {
         let payload = payload.trim();
@@ -165,6 +315,14 @@ fn unused_port() -> Result<u16> {
         .port();
     drop(listener);
     Ok(port)
+}
+
+fn read_stderr(child: &mut Child) -> String {
+    let mut stderr = String::new();
+    if let Some(stream) = child.stderr.as_mut() {
+        let _ = stream.read_to_string(&mut stderr);
+    }
+    stderr
 }
 
 fn shutdown(child: &mut Child) {
