@@ -40,15 +40,36 @@ impl Default for EmbeddingsConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RankingConfig {
+    #[serde(default = "RankingConfig::default_vector_weight")]
     pub vector_weight: f32,
+    #[serde(default = "RankingConfig::default_keyword_weight")]
     pub keyword_weight: f32,
+    #[serde(default = "RankingConfig::default_title_weight")]
     pub title_weight: f32,
+    #[serde(default = "RankingConfig::default_path_weight")]
     pub path_weight: f32,
+    #[serde(default = "RankingConfig::default_recency_weight")]
     pub recency_weight: f32,
+    #[serde(default = "RankingConfig::default_importance_weight")]
     pub importance_weight: f32,
+    #[serde(default = "RankingConfig::default_confidence_weight")]
     pub confidence_weight: f32,
+    #[serde(default = "RankingConfig::default_access_weight")]
     pub access_weight: f32,
+    #[serde(default = "RankingConfig::default_scope_weight")]
     pub scope_weight: f32,
+}
+
+impl RankingConfig {
+    pub fn default_vector_weight() -> f32 { 0.45 }
+    pub fn default_keyword_weight() -> f32 { 0.2 }
+    pub fn default_title_weight() -> f32 { 0.1 }
+    pub fn default_path_weight() -> f32 { 0.05 }
+    pub fn default_recency_weight() -> f32 { 0.05 }
+    pub fn default_importance_weight() -> f32 { 0.05 }
+    pub fn default_confidence_weight() -> f32 { 0.05 }
+    pub fn default_access_weight() -> f32 { 0.03 }
+    pub fn default_scope_weight() -> f32 { 0.02 }
 }
 
 impl Default for RankingConfig {
