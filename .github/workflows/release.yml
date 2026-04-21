@@ -2,28 +2,15 @@ name: release
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    tags:
+      - "v*"
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: macos-latest
-            artifact: ctx-darwin-arm64.tar.gz
-            binary: ctx
-          - os: ubuntu-latest
-            artifact: ctx-linux-x64.tar.gz
-            binary: ctx
-          - os: windows-latest
-            artifact: ctx-windows-x64.zip
-            binary: ctx.exe
-    runs-on: ${{ matrix.os }}
+  release:
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,10 +20,28 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.os == 'windows-latest' && 'x86_64-pc-windows-msvc' || matrix.os == 'macos-latest' && 'aarch64-apple-darwin' || 'x86_64-unknown-linux-gnu' }}
+          targets: aarch64-apple-darwin
 
       - name: Install protoc
         uses: arduino/setup-protoc@v3
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          CARGO_VERSION="$(grep '^version = ' Cargo.toml | head -n1 | sed -E 's/version = "([^"]+)"/\1/')"
+          if [ "$TAG" = "$VERSION" ]; then
+            echo "release tags must be prefixed with v" >&2
+            exit 1
+          fi
+          if [ "$VERSION" != "$CARGO_VERSION" ]; then
+            echo "tag version ${VERSION} does not match Cargo.toml version ${CARGO_VERSION}" >&2
+            exit 1
+          fi
+          echo "CTX_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "CTX_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Run tests
         run: cargo test
@@ -44,67 +49,59 @@ jobs:
       - name: Build release binary
         run: cargo build --release
 
-      - name: Package unix artifact
-        if: runner.os != 'Windows'
+      - name: Package release artifact
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p release
           cp target/release/ctx .
-          tar -czf "release/${{ matrix.artifact }}" ctx
-
-      - name: Package windows artifact
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force release | Out-Null
-          Compress-Archive -Path target/release/ctx.exe -DestinationPath "release/${{ matrix.artifact }}"
-
-      - name: Upload release asset
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: release/${{ matrix.artifact }}
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download release assets
-        uses: actions/download-artifact@v4
-        with:
-          path: release
-
-      - name: Flatten assets
-        shell: bash
-        run: |
-          set -euo pipefail
-          find release -type f -mindepth 2 -exec mv {} release/ \;
-          find release -mindepth 1 -type d -empty -delete
+          tar -czf release/ctx-darwin-arm64.tar.gz ctx
 
       - name: Write checksums
         shell: bash
         run: |
           set -euo pipefail
           cd release
-          sha256sum *.tar.gz *.zip > checksums.txt
-
-      - name: Update latest tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -f latest "${GITHUB_SHA}"
-          git push origin refs/tags/latest --force
+          shasum -a 256 ctx-darwin-arm64.tar.gz > checksums.txt
+          SHA="$(awk '/ ctx-darwin-arm64.tar.gz$/ {print $1}' checksums.txt)"
+          if [ -z "$SHA" ]; then
+            echo "failed to resolve checksum for ctx-darwin-arm64.tar.gz" >&2
+            exit 1
+          fi
+          echo "CTX_SHA256=$SHA" >> "$GITHUB_ENV"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: latest
+          tag_name: ${{ env.CTX_TAG }}
+          name: ${{ env.CTX_TAG }}
           target_commitish: ${{ github.sha }}
           files: |
             release/*
-          overwrite_files: true
-          make_latest: true
+
+      - name: Update Homebrew tap
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          HOMEBREW_TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
+            echo "missing HOMEBREW_TAP_TOKEN secret" >&2
+            exit 1
+          fi
+          TAP_REPO="${HOMEBREW_TAP_REPO:-${GITHUB_REPOSITORY_OWNER}/homebrew-tap}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${TAP_REPO}.git" tap
+          mkdir -p tap/Formula
+          cargo run --quiet --bin render_homebrew_formula -- \
+            --repository "${GITHUB_REPOSITORY}" \
+            --version "${CTX_VERSION}" \
+            --sha256 "${CTX_SHA256}" > tap/Formula/ctx.rb
+          (
+            cd tap
+            git add Formula/ctx.rb
+            git commit -m "ctx v${CTX_VERSION}"
+            git push origin HEAD
+          )

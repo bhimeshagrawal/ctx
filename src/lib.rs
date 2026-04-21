@@ -9,6 +9,7 @@ pub mod normalize;
 pub mod output;
 pub mod paths;
 pub mod ranking;
+pub mod release;
 pub mod search;
 pub mod services;
 pub mod storage;

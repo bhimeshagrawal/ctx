@@ -28,7 +28,6 @@ Runtime state now uses OS-standard locations instead of `~/.ctx/`.
 ## Commands
 
 - `ctx setup`
-- `ctx update`
 - `ctx uninstall`
 - `ctx doctor`
 - `ctx config show`
@@ -78,30 +77,17 @@ Current MCP prompts:
 
 ## Install
 
-The current distribution path is a direct install script over GitHub Releases.
+`ctx` is distributed through Homebrew for stable releases.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bhimeshagrawal/ctx/main/install.sh | bash
+brew tap bhimeshagrawal/homebrew-tap
+brew install ctx
 ```
 
-Defaults:
-- installs the binary into `~/.local/bin`
-- prints a `PATH` hint if needed
-- does not run setup automatically unless `CTX_RUN_SETUP=1`
-
-Optional environment variables:
-- `CTX_INSTALL_DIR` to change the install directory
-- `CTX_VERSION` to pin a release tag instead of `latest`
-- `CTX_RUN_SETUP=1` to run `ctx setup` after install
-- `CTX_REPO` to override the GitHub repository slug
-- `CTX_DATA_DIR` to override the durable app-data root
-- `CTX_CACHE_DIR` to override the cache root
-
-Example:
+After install:
 
 ```bash
-CTX_INSTALL_DIR="$HOME/bin" CTX_RUN_SETUP=1 \
-curl -fsSL https://raw.githubusercontent.com/bhimeshagrawal/ctx/main/install.sh | bash
+ctx setup
 ```
 
 ## Local Development
@@ -124,21 +110,18 @@ cargo run -- --help
 
 ## Release
 
-Releases are published automatically on every push to `main` through GitHub Actions.
+Stable releases are published from version tags such as `v0.1.0`.
 
 The release workflow will:
+- verify that the pushed tag matches `Cargo.toml`
 - install the Rust toolchain
 - run the Rust test suite
-- build standalone release binaries
-- publish release assets and `checksums.txt`
+- build the macOS ARM release artifact
+- publish a versioned GitHub Release with `checksums.txt`
+- update the Homebrew tap formula automatically
 
-The rolling release tag is `latest`.
-
-Current release assets:
+Current release asset:
 - `ctx-darwin-arm64.tar.gz`
-- `ctx-linux-arm64.tar.gz`
-- `ctx-linux-x64.tar.gz`
-- `ctx-windows-x64.zip`
 
 ## Smoke Test
 
@@ -160,21 +143,14 @@ Destructive purge:
 ctx uninstall --purge-data --force
 ```
 
-## Update
+## Upgrade
 
-Once installed as a compiled binary, update in place with:
-
-```bash
-ctx update
-```
-
-You can also target a specific release:
+Upgrade through Homebrew:
 
 ```bash
-ctx update --version v0.1.0
+brew upgrade ctx
 ```
 
 Notes:
-- `ctx update` is intended for installed binaries, not `cargo run`
-- it currently supports macOS and Linux
-- it replaces the existing binary in place after checksum verification
+- stable installation and upgrades are managed through Homebrew
+- the current Homebrew package targets macOS ARM
